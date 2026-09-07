@@ -250,12 +250,16 @@ if categorical_pipeline is not None:
     # Categories learned during training
     if categorical_encoder is not None:
 
-        for feature, categories in zip(
-            categorical_encoder.feature_names_in_,
-            categorical_encoder.categories_
-        ):
+    categories_list = categorical_encoder.categories_
 
-            categorical_options[feature] = list(categories)
+    for i, categories in enumerate(categories_list):
+
+        feature = f"Categorical Feature {i + 1}"
+
+        st.write(f"**{feature}**")
+        st.write(
+            f"Number of categories: {len(categories)}"
+        )
 
 
 # =========================================================
