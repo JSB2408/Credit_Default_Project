@@ -93,18 +93,59 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+from pathlib import Path
+
 # =========================================================
 # LOAD MODEL, PREPROCESSOR AND TRAINING DATA
 # =========================================================
 
+BASE_DIR = Path(__file__).resolve().parent
+
+
 @st.cache_resource
 def load_resources():
 
-    model = joblib.load("final_xgb_model.pkl")
+    model_path = BASE_DIR / "final_xgb_model.pkl"
+    preprocessor_path = BASE_DIR / "preprocessor.pkl"
+    x_train_path = BASE_DIR / "X_train_reference.pkl"
 
-    preprocessor = joblib.load("preprocessor.pkl")
+    # Check files exist
+    if not model_path.exists():
+        raise FileNotFoundError(
+            f"Model file not found: {model_path}"
+        )
 
-    X_train = joblib.load("X_train_reference.pkl")
+    if not preprocessor_path.exists():
+        raise FileNotFoundError(
+            f"Preprocessor file not found: {preprocessor_path}"
+        )
+
+    if not x_train_path.exists():
+        raise FileNotFoundError(
+            f"Training reference file not found: {x_train_path}"
+        )
+
+    # Load files one by one
+    try:
+        model = joblib.load(model_path)
+    except Exception as e:
+        raise RuntimeError(
+            f"FAILED TO LOAD final_xgb_model.pkl: {e}"
+        ) from e
+
+    try:
+        preprocessor = joblib.load(preprocessor_path)
+    except Exception as e:
+        raise RuntimeError(
+            f"FAILED TO LOAD preprocessor.pkl: {e}"
+        ) from e
+
+    try:
+        X_train = joblib.load(x_train_path)
+    except Exception as e:
+        raise RuntimeError(
+            f"FAILED TO LOAD X_train_reference.pkl: {e}"
+        ) from e
 
     return model, preprocessor, X_train
 
@@ -115,16 +156,9 @@ try:
 
 except Exception as e:
 
-    st.error(
-        "Unable to load the model files. "
-        "Make sure the following files are inside the same folder as app.py:"
-    )
+    st.error("❌ Model loading failed.")
 
-    st.code("""
-final_xgb_model.pkl
-preprocessor.pkl
-X_train_reference.pkl
-""")
+    st.exception(e)
 
     st.stop()
 
