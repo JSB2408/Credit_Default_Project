@@ -218,51 +218,13 @@ The Streamlit app (`app.py`) provides a simple form-based interface:
 ---
 ## 📁 Repository Structure
 
-application_train.csv
-        │
-        ▼
-Credit_Risk___Loan_Approval.ipynb
-        │
-        ├── EDA & Data Cleaning
-        │       (missing values, duplicates, imbalance check)
-        │
-        ├── Feature Engineering
-        │       (CREDIT_GOODS_RATIO, CREDIT_ANNUITY_RATIO,
-        │        employment stability, family burden)
-        │
-        ├── Preprocessing Pipeline (ColumnTransformer)
-        │       (median/mode imputation → scaling → one-hot encoding)
-        │              │
-        │              ▼
-        │       preprocessor.pkl  ──────────────┐
-        │                                        │
-        ├── Model Training & Comparison          │
-        │       (Logistic Regression → Random    │
-        │        Forest → XGBoost, balanced)     │
-        │                                        │
-        ├── Hyperparameter Tuning (RandomizedSearchCV)
-        │       + Threshold Optimization (0.10–0.90 sweep)
-        │              │
-        │              ▼
-        │       final_xgb_model.pkl  ────────────┤
-        │                                        │
-        └── Save Training Reference              │
-                (medians/modes for auto-fill)     │
-                       │                          │
-                       ▼                          │
-                X_train_reference.pkl ────────────┤
-                                                   │
-                                                   ▼
-                                              app.py (Streamlit)
-                                                   │
-                                    ┌──────────────┼──────────────┐
-                                    ▼              ▼              ▼
-                            Applicant Form   Preprocess Input   Predict
-                            (income, credit, age, etc.)   (preprocessor.transform)   (model.predict_proba)
-                                                   │
-                                                   ▼
-                                    Risk Score (0–100) + Risk Band
-                                    (LOW / MEDIUM / HIGH) + Recommendation
+├── app.py                              # Streamlit web application
+├── Credit_Risk___Loan_Approval.ipynb   # Full EDA, feature engineering & modeling notebook
+├── final_xgb_model.pkl                 # Trained, tuned XGBoost model
+├── preprocessor.pkl                    # Fitted ColumnTransformer (imputation, scaling, encoding)
+├── X_train_reference.pkl               # Training data reference (used to auto-fill non-form features)
+├── requirements.txt                    # Python dependencies
+└── README.md
 
 
 ## ⚙️ Installation & Setup
