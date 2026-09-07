@@ -250,26 +250,40 @@ if categorical_pipeline is not None:
     # Categories learned during training
     # Categories learned during training
 # Categories learned during training
+# Most frequent categorical values
+if categorical_imputer is not None:
+
+    for feature, value in zip(
+        categorical_imputer.feature_names_in_,
+        categorical_imputer.statistics_
+    ):
+        categorical_defaults[feature] = value
+
+
+# Categories learned during training
 if categorical_encoder is not None:
 
-    # Use feature names if they exist in the saved encoder
+    # Get feature names from the encoder if available
     if hasattr(categorical_encoder, "feature_names_in_"):
+        encoder_features = categorical_encoder.feature_names_in_
 
+    # Otherwise get feature names from the imputer
+    elif (
+        categorical_imputer is not None
+        and hasattr(categorical_imputer, "feature_names_in_")
+    ):
+        encoder_features = categorical_imputer.feature_names_in_
+
+    else:
+        encoder_features = None
+
+    # Store categories for each categorical feature
+    if encoder_features is not None:
         for feature, categories in zip(
-            categorical_encoder.feature_names_in_,
+            encoder_features,
             categorical_encoder.categories_
         ):
             categorical_options[feature] = list(categories)
-
-    else:
-        # Fallback for encoders saved without feature names
-        if "categorical_features" in locals():
-
-            for feature, categories in zip(
-                categorical_features,
-                categorical_encoder.categories_
-            ):
-                categorical_options[feature] = list(categories)
         
 
 
