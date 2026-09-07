@@ -95,19 +95,19 @@ st.markdown("""
 
 from pathlib import Path
 
-# =========================================================
-# LOAD MODEL, PREPROCESSOR AND TRAINING DATA
-# =========================================================
 
 BASE_DIR = Path(__file__).resolve().parent
 
+
+# =========================================================
+# LOAD MODEL AND PREPROCESSOR
+# =========================================================
 
 @st.cache_resource
 def load_resources():
 
     model_path = BASE_DIR / "final_xgb_model.pkl"
     preprocessor_path = BASE_DIR / "preprocessor.pkl"
-    x_train_path = BASE_DIR / "X_train_reference.pkl"
 
     # Check files exist
     if not model_path.exists():
@@ -120,39 +120,34 @@ def load_resources():
             f"Preprocessor file not found: {preprocessor_path}"
         )
 
-    if not x_train_path.exists():
-        raise FileNotFoundError(
-            f"Training reference file not found: {x_train_path}"
-        )
-
-    # Load files one by one
+    # Load model
     try:
+
         model = joblib.load(model_path)
+
     except Exception as e:
+
         raise RuntimeError(
             f"FAILED TO LOAD final_xgb_model.pkl: {e}"
         ) from e
 
+    # Load preprocessor
     try:
+
         preprocessor = joblib.load(preprocessor_path)
+
     except Exception as e:
+
         raise RuntimeError(
             f"FAILED TO LOAD preprocessor.pkl: {e}"
         ) from e
 
-    try:
-        X_train = joblib.load(x_train_path)
-    except Exception as e:
-        raise RuntimeError(
-            f"FAILED TO LOAD X_train_reference.pkl: {e}"
-        ) from e
-
-    return model, preprocessor, X_train
+    return model, preprocessor
 
 
 try:
 
-    model, preprocessor, X_train = load_resources()
+    model, preprocessor = load_resources()
 
 except Exception as e:
 
@@ -163,6 +158,118 @@ except Exception as e:
     st.stop()
 
 
+# =========================================================
+# BUILD REFERENCE INFORMATION FROM PREPROCESSOR
+# =========================================================
+
+# The original X_train_reference.pkl was a very large
+# ~216 MB file. We do not need it for deployment.
+#
+# The fitted preprocessor already contains:
+# - feature names
+# - numerical imputation values
+# - categorical imputation values
+# - categorical levels
+#
+# We reconstruct the information required by the UI
+# directly from the preprocessor.
+
+
+X_train_columns = list(
+    preprocessor.feature_names_in_
+)
+
+
+# ---------------------------------------------------------
+# Extract numerical and categorical transformers
+# ---------------------------------------------------------
+
+numeric_pipeline = None
+categorical_pipeline = None
+
+for name, transformer, columns in preprocessor.transformers_:
+
+    if name == "num":
+
+        numeric_pipeline = transformer
+
+    elif name == "cat":
+
+        categorical_pipeline = transformer
+
+
+# ---------------------------------------------------------
+# Numerical defaults
+# ---------------------------------------------------------
+
+numeric_defaults = {}
+
+if numeric_pipeline is not None:
+
+    numeric_imputer = numeric_pipeline.named_steps.get(
+        "imputer"
+    )
+
+    if numeric_imputer is not None:
+
+        for feature, value in zip(
+            numeric_imputer.feature_names_in_,
+            numeric_imputer.statistics_
+        ):
+
+            numeric_defaults[feature] = value
+
+
+# ---------------------------------------------------------
+# Categorical defaults
+# ---------------------------------------------------------
+
+categorical_defaults = {}
+categorical_options = {}
+
+if categorical_pipeline is not None:
+
+    categorical_imputer = categorical_pipeline.named_steps.get(
+        "imputer"
+    )
+
+    categorical_encoder = categorical_pipeline.named_steps.get(
+        "encoder"
+    )
+
+    # Most frequent categorical values
+    if categorical_imputer is not None:
+
+        for feature, value in zip(
+            categorical_imputer.feature_names_in_,
+            categorical_imputer.statistics_
+        ):
+
+            categorical_defaults[feature] = value
+
+    # Categories learned during training
+    if categorical_encoder is not None:
+
+        for feature, categories in zip(
+            categorical_encoder.feature_names_in_,
+            categorical_encoder.categories_
+        ):
+
+            categorical_options[feature] = list(categories)
+
+
+# =========================================================
+# REPLACEMENT FOR X_train
+# =========================================================
+
+class TrainingReference:
+
+    def __init__(self, columns):
+
+        self.columns = columns
+
+
+X_train = TrainingReference(X_train_columns)
 # =========================================================
 # TITLE
 # =========================================================
@@ -189,51 +296,42 @@ st.divider()
 def get_default_value(feature):
 
     """
-    Return a sensible default value for a feature
-    from the training data.
+    Return the training-time default value for a feature.
+
+    Numerical features use the value learned by the
+    SimpleImputer during training.
+
+    Categorical features use the most frequent value
+    learned during training.
     """
 
-    if feature not in X_train.columns:
-        return 0
+    if feature in numeric_defaults:
 
-    series = X_train[feature]
-
-    if pd.api.types.is_numeric_dtype(series):
-
-        value = series.median()
+        value = numeric_defaults[feature]
 
         if pd.isna(value):
-            return 0
+            return 0.0
 
         return float(value)
 
-    else:
+    if feature in categorical_defaults:
 
-        mode = series.mode()
+        return categorical_defaults[feature]
 
-        if len(mode) > 0:
-            return mode.iloc[0]
-
-        return ""
+    return 0
 
 
 def get_options(feature):
 
     """
-    Get categorical options from training data.
+    Return categorical options learned during training.
     """
 
-    if feature not in X_train.columns:
-        return []
+    if feature in categorical_options:
 
-    values = (
-        X_train[feature]
-        .dropna()
-        .unique()
-        .tolist()
-    )
+        return categorical_options[feature]
 
-    return values
+    return []
 
 
 def risk_band(probability):
