@@ -3,6 +3,9 @@
 An end-to-end machine learning project for predicting loan default risk and supporting credit-risk assessment through an interactive Streamlit application.
 
 ---
+## 🚀 Live Demo
+
+[Open the Live Application](https://creditdefaultproject-jasmeetsb.streamlit.app/)
 
 ## 📌 Project Overview
 
